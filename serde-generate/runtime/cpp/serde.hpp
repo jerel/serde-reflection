@@ -609,9 +609,11 @@ template <class... Types>
 struct Deserializable<std::tuple<Types...>> {
     template <typename Deserializer>
     static std::tuple<Types...> deserialize(Deserializer &deserializer) {
-        // Visit each of the type components.
-        return std::make_tuple(
-            Deserializable<Types>::deserialize(deserializer)...);
+        // Visit each of the type components. We use the constructor of `std::tuple` so
+        // that the evaluation order of arguments is specified by the C++ standard.
+        return std::tuple<Types...>{
+            Deserializable<Types>::deserialize(deserializer)...
+        };
     }
 };
 
