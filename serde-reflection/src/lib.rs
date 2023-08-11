@@ -353,6 +353,7 @@ mod format;
 mod ser;
 mod trace;
 mod value;
+mod enum_tracker;
 
 pub use error::{Error, Result};
 pub use format::{ContainerFormat, Format, FormatHolder, Named, Variable, VariantFormat};

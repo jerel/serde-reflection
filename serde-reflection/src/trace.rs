@@ -6,7 +6,7 @@ use crate::{
     error::{Error, Result},
     format::*,
     ser::Serializer,
-    value::Value,
+    value::Value, enum_tracker::EnumTracker,
 };
 use once_cell::sync::Lazy;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
@@ -28,7 +28,7 @@ pub struct Tracer {
 
     /// Enums that have detected to be yet incomplete (i.e. missing variants)
     /// while tracing deserialization.
-    pub(crate) incomplete_enums: BTreeSet<String>,
+    pub(crate) incomplete_enums: EnumTracker,
 }
 
 /// User inputs, aka "samples", recorded during serialization.
@@ -104,7 +104,7 @@ impl Tracer {
         Self {
             config,
             registry: BTreeMap::new(),
-            incomplete_enums: BTreeSet::new(),
+            incomplete_enums: EnumTracker::new(),
         }
     }
 
@@ -166,16 +166,20 @@ impl Tracer {
         T: Deserialize<'de>,
     {
         let mut values = Vec::new();
+        self.incomplete_enums = EnumTracker::new();
         loop {
             let (format, value) = self.trace_type_once::<T>(samples)?;
-            values.push(value);
-            if let Format::TypeName(name) = &format {
-                if self.incomplete_enums.contains(name) {
-                    // Restart the analysis to find more variants of T.
-                    self.incomplete_enums.remove(name);
-                    continue;
-                }
+            if !self.incomplete_enums.all_complete() {
+                continue;
             }
+            // values.push(value);
+            // if let Format::TypeName(name) = &format {
+            //     if self.incomplete_enums.contains(name) {
+            //         // Restart the analysis to find more variants of T.
+            //         self.incomplete_enums.remove(name);
+            //         continue;
+            //     }
+            // }
             return Ok((format, values));
         }
     }
@@ -205,13 +209,13 @@ impl Tracer {
         loop {
             let (format, value) = self.trace_type_once_with_seed(samples, seed.clone())?;
             values.push(value);
-            if let Format::TypeName(name) = &format {
-                if self.incomplete_enums.contains(name) {
-                    // Restart the analysis to find more variants of T.
-                    self.incomplete_enums.remove(name);
-                    continue;
-                }
-            }
+            // if let Format::TypeName(name) = &format {
+            //     if self.incomplete_enums.contains(name) {
+            //         // Restart the analysis to find more variants of T.
+            //         self.incomplete_enums.remove(name);
+            //         continue;
+            //     }
+            // }
             return Ok((format, values));
         }
     }
@@ -229,13 +233,13 @@ impl Tracer {
                 .normalize()
                 .map_err(|_| Error::UnknownFormatInContainer(name.clone()))?;
         }
-        if self.incomplete_enums.is_empty() {
+        // if self.incomplete_enums.is_empty() {
             Ok(registry)
-        } else {
-            Err(Error::MissingVariants(
-                self.incomplete_enums.into_iter().collect(),
-            ))
-        }
+        // } else {
+        //     Err(Error::MissingVariants(
+        //         self.incomplete_enums.into_iter().collect(),
+        //     ))
+        // }
     }
 
     /// Same as registry but always return a value, even if we detected issues.

@@ -262,16 +262,16 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
     {
         let mut format = Format::unknown();
         self.format.unify(Format::Seq(Box::new(format.clone())))?;
-        if format.is_unknown() {
+        // if format.is_unknown() {
             // Simulate vector of size 1.
             let inner =
                 SeqDeserializer::new(self.tracer, self.samples, std::iter::once(&mut format));
             visitor.visit_seq(inner)
-        } else {
-            // Cut exploration with a vector of size 0.
-            let inner = SeqDeserializer::new(self.tracer, self.samples, std::iter::empty());
-            visitor.visit_seq(inner)
-        }
+        // } else {
+        //     // Cut exploration with a vector of size 0.
+        //     let inner = SeqDeserializer::new(self.tracer, self.samples, std::iter::empty());
+        //     visitor.visit_seq(inner)
+        // }
     }
 
     fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value>
@@ -400,6 +400,8 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
     where
         V: Visitor<'de>,
     {
+        self.tracer.incomplete_enums.open_node(name.into(), variants.len() - 1);
+
         self.format.unify(Format::TypeName(name.into()))?;
         // Pre-update the registry.
         self.tracer
@@ -410,21 +412,9 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
             Some(ContainerFormat::Enum(x)) => x,
             _ => unreachable!(),
         };
-        // If we have found all the variants OR if the enum is marked as
-        // incomplete already, pick the first index.
-        let index = if known_variants.len() == variants.len()
-            || self.tracer.incomplete_enums.contains(name)
-        {
-            0
-        } else {
-            let mut index = known_variants.len() as u32;
-            // Scan the range 0..=known_variants.len() downwards to find the next
-            // variant index to explore.
-            while known_variants.contains_key(&index) {
-                index -= 1;
-            }
-            index
-        };
+
+        let index = self.tracer.incomplete_enums.next_incomplete_variant() as u32;
+
         let variant = known_variants.entry(index).or_insert_with(|| Named {
             name: (*variants
                 .get(index as usize)
@@ -433,13 +423,12 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
             value: VariantFormat::unknown(),
         });
         let mut value = variant.value.clone();
-        // Mark the enum as incomplete if this was not the last variant to explore.
-        if known_variants.len() != variants.len() {
-            self.tracer.incomplete_enums.insert(name.into());
-        }
+
         // Compute the format for this variant.
         let inner = EnumDeserializer::new(self.tracer, self.samples, index, &mut value);
-        visitor.visit_enum(inner)
+        let result = visitor.visit_enum(inner);
+        self.tracer.incomplete_enums.close_node();
+        result
     }
 
     fn deserialize_identifier<V>(self, _visitor: V) -> Result<V::Value>
