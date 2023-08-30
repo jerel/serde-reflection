@@ -10,7 +10,7 @@ use crate::{
 };
 use once_cell::sync::Lazy;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::{collections::{BTreeMap, BTreeSet}, iter};
 
 /// A map of container formats.
 pub type Registry = BTreeMap<String, ContainerFormat>;

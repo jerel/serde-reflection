@@ -413,7 +413,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
             _ => unreachable!(),
         };
 
-        let index = self.tracer.incomplete_enums.next_incomplete_variant() as u32;
+        let index = self.tracer.incomplete_enums.next_variant_index() as u32;
 
         let variant = known_variants.entry(index).or_insert_with(|| Named {
             name: (*variants
