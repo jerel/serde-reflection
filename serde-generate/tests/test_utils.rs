@@ -83,6 +83,7 @@ pub struct OtherTypes {
     f_option: Option<Struct>,
     f_unit: (),
     f_seq: Vec<Struct>,
+    f_opt_seq: Option<Vec<i32>>,
     f_tuple: (u8, u16),
     f_stringmap: BTreeMap<String, u32>,
     f_intset: BTreeMap<u64, ()>, // Avoiding BTreeSet because Serde treats them as sequences.
@@ -202,6 +203,7 @@ pub fn get_sample_values(has_canonical_maps: bool, has_floats: bool) -> Vec<Serd
         f_option: Some(Struct { x: 2, y: 3 }),
         f_unit: (),
         f_seq: vec![Struct { x: 1, y: 3 }],
+        f_opt_seq: Some(vec![1]),
         f_tuple: (4, 5),
         f_stringmap: if has_canonical_maps {
             btreemap! {"foo".to_string() => 1, "bar".to_string() => 2}
@@ -221,6 +223,7 @@ pub fn get_sample_values(has_canonical_maps: bool, has_floats: bool) -> Vec<Serd
         f_option: None,
         f_unit: (),
         f_seq: Vec::new(),
+        f_opt_seq: None,
         f_tuple: (4, 5),
         f_stringmap: BTreeMap::new(),
         f_intset: if has_canonical_maps {
@@ -237,6 +240,7 @@ pub fn get_sample_values(has_canonical_maps: bool, has_floats: bool) -> Vec<Serd
         f_option: None,
         f_unit: (),
         f_seq: Vec::new(),
+        f_opt_seq: None,
         f_tuple: (4, 5),
         f_stringmap: BTreeMap::new(),
         f_intset: if has_canonical_maps {
