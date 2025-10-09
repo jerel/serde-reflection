@@ -274,15 +274,15 @@ where
         Ok(())
     }
 
-    fn is_cyclic(&self, name: &str, format: &Format) -> bool {
+    fn is_cyclic(name: &str, format: &Format) -> bool {
         use Format::*;
         match format {
             TypeName(s) => name == s,
-            Option(f) => self.is_cyclic(name, f),
-            Seq(f) => self.is_cyclic(name, f),
-            Map { key, value } => self.is_cyclic(name, key) || self.is_cyclic(name, value),
-            Tuple(fs) => fs.iter().any(|f| self.is_cyclic(name, f)),
-            TupleArray { content, size: _ } => self.is_cyclic(name, content),
+            Option(f) => Self::is_cyclic(name, f),
+            Seq(f) => Self::is_cyclic(name, f),
+            Map { key, value } => Self::is_cyclic(name, key) || Self::is_cyclic(name, value),
+            Tuple(fs) => fs.iter().any(|f| Self::is_cyclic(name, f)),
+            TupleArray { content, size: _ } => Self::is_cyclic(name, content),
             _ => false,
         }
     }
@@ -307,7 +307,7 @@ where
                 write!(self.out, " unit")?;
                 writeln!(self.out)?;
             }
-            NewTypeStruct(format) if self.is_cyclic(name, format.as_ref()) => {
+            NewTypeStruct(format) if Self::is_cyclic(name, format.as_ref()) => {
                 let mut map = BTreeMap::new();
                 map.insert(
                     0,
@@ -382,23 +382,28 @@ impl crate::SourceInstaller for Installer {
         let dune_project_source_path = self.install_dir.join("dune-project");
         let mut dune_project_file = std::fs::File::create(dune_project_source_path)?;
         writeln!(dune_project_file, "(lang dune 3.0)")?;
-        let dune_source_path = dir_path.join("dune");
-        let mut dune_file = std::fs::File::create(dune_source_path)?;
         let name = config.module_name.to_snake_case();
-        let mut runtime_str = "";
-        if config.encodings.len() == 1 {
-            for enc in config.encodings.iter() {
-                match enc {
-                    Encoding::Bcs => runtime_str = "\n(libraries bcs_runtime)",
-                    Encoding::Bincode => runtime_str = "\n(libraries bincode_runtime)",
+
+        if config.package_manifest {
+            let dune_source_path = dir_path.join("dune");
+            let mut dune_file = std::fs::File::create(dune_source_path)?;
+            let mut runtime_str = "";
+            if config.encodings.len() == 1 {
+                for enc in config.encodings.iter() {
+                    match enc {
+                        Encoding::Bcs => runtime_str = "\n(libraries bcs_runtime)",
+                        Encoding::Bincode => runtime_str = "\n(libraries bincode_runtime)",
+                    }
                 }
             }
+            writeln!(
+                dune_file,
+                "(env (_ (flags (:standard -w -30-42 -warn-error -a))))\n\n\
+                (library\n (name {0})\n (modules {0})\n (preprocess (pps ppx)){1})",
+                name, runtime_str
+            )?;
         }
-        writeln!(
-            dune_file,
-            "(env (_ (flags (:standard -w -30-42 -warn-error -a))))\n\n(library\n (name {0})\n (modules {0})\n (preprocess (pps ppx)){1})",
-            name, runtime_str
-        )?;
+
         let source_path = dir_path.join(format!("{}.ml", name));
         let mut file = std::fs::File::create(source_path)?;
         let generator = CodeGenerator::new(config);

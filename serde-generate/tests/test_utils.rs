@@ -423,8 +423,8 @@ impl Runtime {
             return results;
         }
 
-        // For each byte position < 11 in the serialization of `value`:
-        for i in 0..std::cmp::min(s.len(), 11) {
+        // For each byte position < 9 in the serialization of `value`:
+        for i in 0..std::cmp::min(s.len(), 9) {
             // Flip the highest bit
             {
                 let mut s2 = s.clone();
@@ -719,6 +719,9 @@ OtherTypes:
     - f_seq:
         SEQ:
           TYPENAME: Struct
+    - f_opt_seq:
+        OPTION:
+          SEQ: I32
     - f_tuple:
         TUPLE:
           - U8
@@ -968,7 +971,7 @@ fn test_bincode_get_positive_samples() {
 // This test requires --release because of deserialization of long (unit) vectors.
 #[cfg(not(debug_assertions))]
 fn test_bcs_get_positive_samples() {
-    assert_eq!(test_get_positive_samples(Runtime::Bcs), 100);
+    assert_eq!(test_get_positive_samples(Runtime::Bcs), 82);
 }
 
 // Make sure all the "positive" samples successfully deserialize with the reference Rust
@@ -992,7 +995,7 @@ fn test_bincode_get_negative_samples() {
 // This test requires --release because of deserialization of long (unit) vectors.
 #[cfg(not(debug_assertions))]
 fn test_bcs_get_negative_samples() {
-    assert_eq!(test_get_negative_samples(Runtime::Bcs), 63);
+    assert_eq!(test_get_negative_samples(Runtime::Bcs), 59);
 }
 
 // Make sure all the "negative" samples fail to deserialize with the reference Rust

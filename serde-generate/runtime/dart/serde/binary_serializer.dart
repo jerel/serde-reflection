@@ -1,9 +1,14 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-part of serde;
+part of 'serde.dart';
 
 abstract class BinarySerializer {
+  BinarySerializer({
+    required this.containerDepthBudget,
+  });
+
+  int containerDepthBudget;
   final List<int> output = List<int>.empty(growable: true);
 
   Uint8List get bytes {
@@ -56,12 +61,12 @@ abstract class BinarySerializer {
 
   void serializeUint64(Uint64 val) {
     BigInt number = val.toBigInt();
-    final _byteMask = BigInt.from(0xFF);
+    final byteMask = BigInt.from(0xFF);
     int bytes = 8;
     var bdata = Uint8List(bytes);
     for (int i = 0; i < bytes; i++) {
       // little endian
-      bdata[i] = (number & _byteMask).toInt();
+      bdata[i] = (number & byteMask).toInt();
       number = number >> 8;
     }
 
@@ -129,12 +134,25 @@ abstract class BinarySerializer {
   void serializeLength(int len);
 
   void serializeInt128(Int128 value) {
-    serializeInt64(value.low.toInt());
-    serializeInt64(value.high.toInt());
+    serializeUint64(Uint64(value.low));
+    serializeUint64(Uint64(value.high));
   }
 
   void serializeUint128(Uint128 value) {
     serializeUint64(Uint64(value.low));
     serializeUint64(Uint64(value.high));
   }
+
+  void increaseContainerDepth() {
+    if (containerDepthBudget == 0) {
+      throw Exception('exceeded maximum container depth');
+    }
+    containerDepthBudget -= 1;
+  }
+
+  void decreaseContainerDepth() {
+    containerDepthBudget += 1;
+  }
+
+  void sortMapEntries(List<int> offsets);
 }

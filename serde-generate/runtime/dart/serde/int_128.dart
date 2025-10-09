@@ -1,11 +1,11 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-part of serde;
+part of 'serde.dart';
 
 @immutable
 class Int128 {
-  Int128(this.high, this.low);
+  const Int128(this.high, this.low);
 
   factory Int128.parse(String num, {int? radix}) {
     return Int128.fromBigInt(BigInt.parse(num, radix: radix));

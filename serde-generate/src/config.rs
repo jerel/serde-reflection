@@ -6,13 +6,14 @@ use std::collections::{BTreeMap, BTreeSet};
 /// Code generation options meant to be supported by all languages.
 #[derive(Clone, Debug)]
 pub struct CodeGeneratorConfig {
-    pub(crate) module_name: String,
-    pub(crate) serialization: bool,
-    pub(crate) encodings: BTreeSet<Encoding>,
-    pub(crate) external_definitions: ExternalDefinitions,
-    pub(crate) comments: DocComments,
-    pub(crate) custom_code: CustomCode,
-    pub(crate) c_style_enums: bool,
+    pub module_name: String,
+    pub serialization: bool,
+    pub encodings: BTreeSet<Encoding>,
+    pub external_definitions: ExternalDefinitions,
+    pub comments: DocComments,
+    pub custom_code: CustomCode,
+    pub c_style_enums: bool,
+    pub package_manifest: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -67,6 +68,7 @@ impl CodeGeneratorConfig {
             comments: BTreeMap::new(),
             custom_code: BTreeMap::new(),
             c_style_enums: false,
+            package_manifest: true,
         }
     }
 
@@ -115,6 +117,12 @@ impl CodeGeneratorConfig {
     /// native enum type in supported languages.
     pub fn with_c_style_enums(mut self, c_style_enums: bool) -> Self {
         self.c_style_enums = c_style_enums;
+        self
+    }
+
+    /// Generate a package manifest file for the target language.
+    pub fn with_package_manifest(mut self, package_manifest: bool) -> Self {
+        self.package_manifest = package_manifest;
         self
     }
 }

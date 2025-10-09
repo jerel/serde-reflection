@@ -16,6 +16,8 @@ env:
   RUST_BACKTRACE: short
   RUSTFLAGS: "-D warnings"
   RUSTUP_MAX_RETRIES: 10
+  # https://stackoverflow.com/questions/59119904/process-terminated-couldnt-find-a-valid-icu-package-installed-on-the-system-in
+  DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
 
 jobs:
   lint:
@@ -24,10 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # will install toolchain specified in rust-toolchain
-      - name: Install Rust toolchain
-        run: |
-          rustup show
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Version Information
         run: |
@@ -54,16 +53,21 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # will install toolchain specified in rust-toolchain
-      - name: Install Rust toolchain
-        run: |
-          rustup show
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Setup Additional Languages (solidity)
+        uses: foundry-rs/foundry-toolchain@v1.2.0
+
+      - name: Setup Additional Languages (solidity)
+        uses: pontem-network/get-solc@master
+        with:
+          version: v0.8.25
 
       - name: Setup Additional Languages (python3)
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      
+
       - name: Setup Additional Languages (python3 packages)
         run: |
           python3 -m pip install pyre-check==0.0.59
@@ -71,37 +75,38 @@ jobs:
           echo '/github/home/.local/bin' >> $GITHUB_PATH
 
       - name: Setup Additional Languages (.Net)
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: | 
-            2.1.x
-            3.1.x
+          dotnet-version: '6.0.x'
 
       - name: Setup Additional Languages (golang)
         uses: actions/setup-go@v3
         with:
-          go-version: '~1.15.0'
+          go-version: '~1.22.0'
 
       - name: Setup Additional Languages (deno)
         uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
-      
+
       - name: Setup Additional Languages (dart)
         uses: dart-lang/setup-dart@v1
         with:
-          sdk: 2.14.0
-      
+          sdk: 3.5.3
+
       - name: Setup Additional Languages (swift)
-        uses: swift-actions/setup-swift@v1
+        # TODO: Use the release version again once
+        # https://github.com/swift-actions/setup-swift/pull/680
+        # is merged
+        uses: swift-actions/setup-swift@bb83339d1e8577741bdc6c65ba551ce7dc0fb854
         with:
           # older swift versions are having gpg issues https://github.com/swift-actions/setup-swift/issues/520
-          swift-version: "5.7"
+          swift-version: "5.10.1"
 
       - name: Setup Additional Languages (ocaml)
-        uses: ocaml/setup-ocaml@v2
+        uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 4.14.x
+          ocaml-compiler: 5.0
           opam-disable-sandboxing: true
 
       - name: Setup Additional Languages (ocaml packages)

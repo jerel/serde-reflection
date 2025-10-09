@@ -57,7 +57,6 @@ impl<'a> CodeGenerator<'a> {
 
         let mut dir_path = install_dir;
         std::fs::create_dir_all(&dir_path)?;
-        self.write_package(&dir_path)?;
         dir_path = dir_path.join("lib").join("src");
         for part in &current_namespace {
             dir_path = dir_path.join(part);
@@ -78,25 +77,6 @@ impl<'a> CodeGenerator<'a> {
         Ok(())
     }
 
-    fn write_package(&self, install_dir: &Path) -> Result<()> {
-        let mut file = std::fs::File::create(install_dir.join("pubspec.yaml"))?;
-        let mut out = IndentedWriter::new(&mut file, IndentConfig::Space(2));
-        writeln!(
-            &mut out,
-            r#"name: {}
-
-environment:
-  sdk: '>=2.14.0 <3.0.0'
-
-dependencies:
-  meta: ^1.0.0
-  tuple: ^2.0.0
-"#,
-            self.config.module_name
-        )?;
-        Ok(())
-    }
-
     fn write_library(
         &self,
         install_dir: &Path,
@@ -114,7 +94,8 @@ dependencies:
 
         writeln!(
             &mut emitter.out,
-            r#"library {}_types;
+            r#"// ignore_for_file: unused_import
+library {}_types;
 
 import 'dart:typed_data';
 import 'package:meta/meta.dart';
@@ -194,7 +175,7 @@ where
     fn output_preamble(&mut self) -> Result<()> {
         writeln!(
             self.out,
-            "part of {}_types;",
+            "// ignore_for_file: type=lint, type=warning\npart of '{}.dart';",
             self.generator.config.module_name
         )?;
 
@@ -505,7 +486,7 @@ if (tag) {{
                     self.out,
                     r#"
 final length = deserializer.deserializeLength();
-return List.generate(length, (_i) => {0});
+return List.generate(length, (_) => {0});
 "#,
                     self.quote_deserialize(format)
                 )?;
@@ -670,53 +651,43 @@ return obj;
         }
 
         if self.generator.config.serialization {
-            // a struct (UnitStruct) with zero fields
-            if variant_index.is_none() && fields.is_empty() {
-                writeln!(
-                    self.out,
-                    "\n{}.deserialize(BinaryDeserializer deserializer);",
-                    self.quote_qualified_name(name)
-                )?;
             // Deserialize (struct) or Load (variant)
-            } else if variant_index.is_none() {
+            if variant_index.is_none() {
                 writeln!(
                     self.out,
-                    "\n{}.deserialize(BinaryDeserializer deserializer) :",
-                    self.quote_qualified_name(name)
-                )?;
-            } else if !fields.is_empty() {
-                writeln!(
-                    self.out,
-                    "\n{}.load(BinaryDeserializer deserializer) :",
+                    "\nstatic {} deserialize(BinaryDeserializer deserializer) {{",
                     self.quote_qualified_name(name)
                 )?;
             } else {
                 writeln!(
                     self.out,
-                    "\n{}.load(BinaryDeserializer deserializer);",
+                    "\nstatic {} load(BinaryDeserializer deserializer) {{",
                     self.quote_qualified_name(name)
                 )?;
             }
 
             self.out.indent();
-            for (index, field) in fields.iter().enumerate() {
-                if index == field_count - 1 {
-                    writeln!(
-                        self.out,
-                        "{} = {};",
-                        self.quote_field(&field.name.to_mixed_case()),
-                        self.quote_deserialize(&field.value)
-                    )?;
-                } else {
-                    writeln!(
-                        self.out,
-                        "{} = {},",
-                        self.quote_field(&field.name.to_mixed_case()),
-                        self.quote_deserialize(&field.value)
-                    )?;
-                }
+            writeln!(self.out, "deserializer.increaseContainerDepth();")?;
+            writeln!(
+                self.out,
+                "final instance = {}(",
+                self.quote_qualified_name(name)
+            )?;
+            self.out.indent();
+            for field in fields {
+                writeln!(
+                    self.out,
+                    "{}: {},",
+                    self.quote_field(&field.name.to_mixed_case()),
+                    self.quote_deserialize(&field.value)
+                )?;
             }
             self.out.unindent();
+            writeln!(self.out, ");")?;
+            writeln!(self.out, "deserializer.decreaseContainerDepth();")?;
+            writeln!(self.out, "return instance;")?;
+            self.out.unindent();
+            writeln!(self.out, "}}")?;
 
             if variant_index.is_none() {
                 for encoding in &self.generator.config.encodings {
@@ -780,6 +751,7 @@ return obj;
         if self.generator.config.serialization {
             writeln!(self.out, "\nvoid serialize(BinarySerializer serializer) {{",)?;
             self.out.indent();
+            writeln!(self.out, "serializer.increaseContainerDepth();")?;
             if let Some(index) = variant_index {
                 writeln!(self.out, "serializer.serializeVariantIndex({});", index)?;
             }
@@ -793,6 +765,7 @@ return obj;
                     )
                 )?;
             }
+            writeln!(self.out, "serializer.decreaseContainerDepth();")?;
             self.out.unindent();
             writeln!(self.out, "}}")?;
 
@@ -860,47 +833,46 @@ return obj;
         writeln!(self.out, "}}")?;
 
         // Hashing
-        if field_count > 0 {
-            write!(self.out, "\n@override")?;
+        write!(self.out, "\n@override")?;
+        if field_count == 0 {
+            writeln!(self.out, "\nint get hashCode => runtimeType.hashCode;")?;
+        } else if field_count == 1 {
+            writeln!(
+                self.out,
+                "\nint get hashCode => {}.hashCode;",
+                fields.first().unwrap().name.to_mixed_case()
+            )?;
+        } else {
+            let use_hash_all = field_count > 20;
 
-            if field_count == 1 {
+            if use_hash_all {
+                writeln!(self.out, "\nint get hashCode => Object.hashAll([")?;
+            } else {
+                writeln!(self.out, "\nint get hashCode => Object.hash(")?;
+            }
+
+            self.out.indent();
+            self.out.indent();
+            self.out.indent();
+
+            for field in fields {
                 writeln!(
                     self.out,
-                    "\nint get hashCode => {}.hashCode;",
-                    fields.first().unwrap().name.to_mixed_case()
+                    "{},",
+                    self.quote_field(&field.name.to_mixed_case())
                 )?;
-            } else {
-                let use_hash_all = field_count > 20;
-
-                if use_hash_all {
-                    writeln!(self.out, "\nint get hashCode => Object.hashAll([")?;
-                } else {
-                    writeln!(self.out, "\nint get hashCode => Object.hash(")?;
-                }
-
-                self.out.indent();
-                self.out.indent();
-                self.out.indent();
-
-                for field in fields {
-                    writeln!(
-                        self.out,
-                        "{},",
-                        self.quote_field(&field.name.to_mixed_case())
-                    )?;
-                }
-
-                self.out.unindent();
-
-                if use_hash_all {
-                    writeln!(self.out, "]);")?;
-                } else {
-                    writeln!(self.out, ");")?;
-                }
-
-                self.out.unindent();
-                self.out.unindent();
             }
+
+            self.out.unindent();
+
+            if use_hash_all {
+                writeln!(self.out, "]);")?;
+            } else {
+                writeln!(self.out, ");")?;
+            }
+
+            self.out.unindent();
+            self.out.unindent();
         }
 
         // Generate a toString implementation in each class
@@ -1031,7 +1003,7 @@ switch (index) {{"#,
             }
             writeln!(
                 self.out,
-                "default: throw Exception(\"Unknown variant index for {}: \" + index.toString());",
+                "default: throw Exception('Unknown variant index for {}: ' + index.toString());",
                 self.quote_qualified_name(name),
             )?;
             self.out.unindent();
@@ -1153,7 +1125,7 @@ switch (index) {{"#,
             }
             writeln!(
                 self.out,
-                "default: throw Exception(\"Unknown variant index for {}: \" + index.toString());",
+                "default: throw Exception('Unknown variant index for {}: ' + index.toString());",
                 self.quote_qualified_name(name),
             )?;
             self.out.unindent();
@@ -1236,7 +1208,7 @@ switch (index) {{"#,
     }
 }
 
-/// Installer for generated source files in Go.
+/// Installer for generated source files in Dart.
 pub struct Installer {
     install_dir: PathBuf,
 }
@@ -1259,6 +1231,25 @@ impl Installer {
         }
         Ok(())
     }
+
+    fn write_package(&self, install_dir: &Path, module_name: &str) -> Result<()> {
+        let mut file = std::fs::File::create(install_dir.join("pubspec.yaml"))?;
+        let mut out = IndentedWriter::new(&mut file, IndentConfig::Space(2));
+        writeln!(
+            &mut out,
+            r#"name: {}
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  meta: ^1.0.0
+  tuple: ^2.0.0
+"#,
+            module_name
+        )?;
+        Ok(())
+    }
 }
 
 impl crate::SourceInstaller for Installer {
@@ -1271,7 +1262,13 @@ impl crate::SourceInstaller for Installer {
     ) -> std::result::Result<(), Self::Error> {
         let generator = CodeGenerator::new(config);
         generator.output(self.install_dir.clone(), registry)?;
-        // write the main module file to export the public api
+
+        // Write the `pubspec.yaml` package manifest file.
+        if config.package_manifest {
+            self.write_package(&self.install_dir, &config.module_name)?;
+        }
+
+        // Write the main module file to export the public API.
         std::fs::write(
             self.install_dir
                 .join("lib")
@@ -1281,6 +1278,7 @@ impl crate::SourceInstaller for Installer {
                 name = &config.module_name
             ),
         )?;
+
         Ok(())
     }
 

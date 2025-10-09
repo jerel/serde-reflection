@@ -139,7 +139,7 @@ fn test_that_swift_code_compiles_with_comments() {
 
     let (_dir, source_path) = test_that_swift_code_compiles_with_config(&config);
     // Comments were correctly generated.
-    let content = std::fs::read_to_string(&source_path).unwrap();
+    let content = std::fs::read_to_string(source_path).unwrap();
     assert!(content.contains(
         r#"
 // Some
@@ -185,6 +185,23 @@ fn test_that_swift_code_compiles_with_custom_code() {
 
     let (_dir, source_path) = test_that_swift_code_compiles_with_config(&config);
     // Comments were correctly generated.
-    let content = std::fs::read_to_string(&source_path).unwrap();
+    let content = std::fs::read_to_string(source_path).unwrap();
     assert!(content.contains("// custom1"));
+}
+
+#[test]
+fn test_that_swift_code_follow_case_convention() {
+    let config = CodeGeneratorConfig::new("Testing".to_string());
+
+    let (_dir, source_path) = test_that_swift_code_compiles_with_config(&config);
+    // Case convention were correctly followed.
+    let content = std::fs::read_to_string(source_path).unwrap();
+
+    // Enum variants are `lowerCamelCase`.
+    assert!(content.contains(r#"case primitiveTypes"#));
+    assert!(!content.contains(r#"case PrimitiveTypes"#));
+    assert!(!content.contains(r#"case primitive_ypes"#));
+    // Field names are `lowerCamelCase`.
+    assert!(content.contains(r#"@Indirect public var fBool: Bool"#));
+    assert!(!content.contains(r#"@Indirect public var f_bool: Bool"#));
 }

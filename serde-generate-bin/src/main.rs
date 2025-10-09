@@ -9,8 +9,8 @@
 //! '''
 
 use serde_generate::{
-    cpp, csharp, dart, golang, java, ocaml, python3, rust, swift, typescript, CodeGeneratorConfig,
-    Encoding, SourceInstaller,
+    cpp, csharp, dart, golang, java, ocaml, python3, rust, solidity, swift, typescript,
+    CodeGeneratorConfig, Encoding, SourceInstaller,
 };
 use serde_reflection::Registry;
 use std::path::PathBuf;
@@ -21,6 +21,7 @@ arg_enum! {
 enum Language {
     Python3,
     Cpp,
+    Solidity,
     Rust,
     Java,
     Go,
@@ -78,9 +79,19 @@ struct Options {
     /// if the target language and the generator code support them.
     #[structopt(long)]
     use_c_style_enums: bool,
+
+    /// Avoid creating a package spec file defining dependencies for the chosen language.
+    /// Takes effect only for languages that have a package manifest format.
+    #[structopt(long)]
+    skip_package_manifest: bool,
 }
 
-fn get_codegen_config<'a, I>(name: String, runtimes: I, c_style_enums: bool) -> CodeGeneratorConfig
+fn get_codegen_config<'a, I>(
+    name: String,
+    runtimes: I,
+    c_style_enums: bool,
+    package_manifest: bool,
+) -> CodeGeneratorConfig
 where
     I: IntoIterator<Item = &'a Runtime>,
 {
@@ -99,6 +110,7 @@ where
     CodeGeneratorConfig::new(name)
         .with_encodings(encodings)
         .with_c_style_enums(c_style_enums)
+        .with_package_manifest(package_manifest)
 }
 
 fn main() {
@@ -124,7 +136,12 @@ fn main() {
     match options.target_source_dir {
         None => {
             if let Some((registry, name)) = named_registry_opt {
-                let config = get_codegen_config(name, &runtimes, options.use_c_style_enums);
+                let config = get_codegen_config(
+                    name,
+                    &runtimes,
+                    options.use_c_style_enums,
+                    !options.skip_package_manifest,
+                );
 
                 let stdout = std::io::stdout();
                 let mut out = stdout.lock();
@@ -137,6 +154,9 @@ fn main() {
                         .output(&mut out, &registry)
                         .unwrap(),
                     Language::Cpp => cpp::CodeGenerator::new(&config)
+                        .output(&mut out, &registry)
+                        .unwrap(),
+                    Language::Solidity => solidity::CodeGenerator::new(&config)
                         .output(&mut out, &registry)
                         .unwrap(),
                     Language::Go => golang::CodeGenerator::new(&config)
@@ -172,6 +192,7 @@ fn main() {
                     }
                     Language::Rust => Box::new(rust::Installer::new(install_dir)),
                     Language::Cpp => Box::new(cpp::Installer::new(install_dir)),
+                    Language::Solidity => Box::new(solidity::Installer::new(install_dir)),
                     Language::Java => Box::new(java::Installer::new(install_dir)),
                     Language::Go => {
                         Box::new(golang::Installer::new(install_dir, serde_package_name_opt))
@@ -184,7 +205,12 @@ fn main() {
                 };
 
             if let Some((registry, name)) = named_registry_opt {
-                let config = get_codegen_config(name, &runtimes, options.use_c_style_enums);
+                let config = get_codegen_config(
+                    name,
+                    &runtimes,
+                    options.use_c_style_enums,
+                    !options.skip_package_manifest,
+                );
                 installer.install_module(&config, &registry).unwrap();
             }
 

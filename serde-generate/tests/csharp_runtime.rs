@@ -83,7 +83,7 @@ fn make_test_project(
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.1;netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks>net6</TargetFrameworks>
     <IsPackable>false</IsPackable>
     <LangVersion>7.2</LangVersion>
   </PropertyGroup>
@@ -147,7 +147,7 @@ fn test_csharp_runtime_on_simple_data(dir: PathBuf, runtime: Runtime) {
         c: Choice::C { x: 7 },
     });
 
-    let mut source = File::create(&test_dir.join("TestRuntime.cs")).unwrap();
+    let mut source = File::create(test_dir.join("TestRuntime.cs")).unwrap();
     writeln!(
         source,
         r#"
@@ -187,7 +187,7 @@ namespace Testing {{
 "#,
         reference
             .iter()
-            .map(|x| format!("{}", *x as u8))
+            .map(|x| format!("{}", *x))
             .collect::<Vec<_>>()
             .join(", "),
         runtime.name().to_camel_case(),
@@ -215,7 +215,7 @@ fn quote_bytes(bytes: &[u8]) -> String {
         "yield return new TestCaseData(new byte[] {{ {} }});",
         bytes
             .iter()
-            .map(|x| format!("{}", *x as u8))
+            .map(|x| format!("{}", *x))
             .collect::<Vec<_>>()
             .join(", ")
     )

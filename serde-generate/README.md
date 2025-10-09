@@ -19,14 +19,15 @@ The following programming languages are fully supported as target languages:
 * Python 3 (requires numpy >= 1.20.1)
 * Rust 2018
 * Go >= 1.14
-* C# (NetCoreApp >= 2.1)
+* C# (NetCoreApp >= 6.0)
 * Swift 5.3
 * OCaml
+* Dart >= 3
 
-The following languages are partially supported and still considered under development:
+The following languages are partially supported and/or still considered under development:
 
-* TypeScript 4 (packaged and tested with Deno) [(follow-up issue)](https://github.com/novifinancial/serde-reflection/issues/119)
-* Dart >= 2 [(follow-up issue)](https://github.com/novifinancial/serde-reflection/issues/120)
+* TypeScript 4 (packaged and tested with Deno) [(follow-up issue)](https://github.com/zefchain/serde-reflection/issues/58)
+* Solidity (tested with Revm) [(initial PR with discussion)](https://github.com/zefchain/serde-reflection/pull/61)
 
 ### Supported Encodings
 

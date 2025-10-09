@@ -79,6 +79,7 @@ fn test_that_golang_code_compiles_with_config_and_registry(
     let status = Command::new("go")
         .current_dir(dir.path())
         .arg("build")
+        .arg("-mod=mod")
         .arg(&source_path)
         .status()
         .unwrap();
@@ -130,7 +131,7 @@ fn test_that_golang_code_compiles_with_comments() {
 
     let (_dir, source_path) = test_that_golang_code_compiles_with_config(&config);
     // Comments were correctly generated.
-    let content = std::fs::read_to_string(&source_path).unwrap();
+    let content = std::fs::read_to_string(source_path).unwrap();
     assert!(content.contains(
         r#"
 // Some
@@ -182,7 +183,7 @@ fn test_that_golang_code_compiles_with_custom_code() {
 
     let (_dir, source_path) = test_that_golang_code_compiles_with_config(&config);
     // Comments were correctly generated.
-    let content = std::fs::read_to_string(&source_path).unwrap();
+    let content = std::fs::read_to_string(source_path).unwrap();
     assert!(content.contains("// custom1"));
     assert!(content.contains("// custom2"));
 }

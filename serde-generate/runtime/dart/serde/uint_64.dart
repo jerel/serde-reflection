@@ -1,13 +1,12 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-part of serde;
+part of 'serde.dart';
 
-///
 /// A Dart type to represent the Rust u64 type.
 @immutable
 class Uint64 {
-  Uint64(this._high);
+  const Uint64(this._high);
 
   factory Uint64.parse(String num, {int? radix}) {
     return Uint64.fromBigInt(BigInt.parse(num, radix: radix));
