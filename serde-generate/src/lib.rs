@@ -20,6 +20,7 @@
 //! * Swift 5.3
 //! * OCaml
 //! * Dart >= 3
+//! * Kotlin
 //!
 //! The following languages are partially supported and/or still considered under development:
 //!
@@ -41,6 +42,8 @@
 //!
 //! In the following example, we transfer a `Test` value from Rust to Python using [`bincode`](https://docs.rs/bincode/1.3.1/bincode/).
 //! ```
+//! # #[cfg(feature = "python3")]
+//! # fn main() -> Result<(), std::io::Error> {
 //! use serde::{Deserialize, Serialize};
 //! use serde_reflection::{Registry, Tracer, TracerConfig};
 //! use std::io::Write;
@@ -51,7 +54,6 @@
 //!     b: (u32, u32),
 //! }
 //!
-//! # fn main() -> Result<(), std::io::Error> {
 //! // Obtain the Serde format of `Test`. (In practice, formats are more likely read from a file.)
 //! let mut tracer = Tracer::new(TracerConfig::default());
 //! tracer.trace_simple_type::<Test>().unwrap();
@@ -95,6 +97,8 @@
 //! assert!(output.status.success());
 //! # Ok(())
 //! # }
+//! # #[cfg(not(feature = "python3"))]
+//! # fn main() {}
 //! ```
 //!
 //! ## Binary Tool
@@ -156,6 +160,9 @@ pub mod golang;
 /// Support for code-generation in Java
 #[cfg(feature = "java")]
 pub mod java;
+/// Support for code-generation in Kotlin
+#[cfg(feature = "kotlin")]
+pub mod kotlin;
 /// Support for code-generation in OCaml
 #[cfg(feature = "ocaml")]
 pub mod ocaml;
